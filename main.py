@@ -14,7 +14,7 @@ TILE_SCALING = 0.5
 
 # Konstanten für die Hintergrundbewegung
 BACKGROUND_SCALING = 1.0
-BACKGROUND_SPEED = 2
+BACKGROUND_SPEED = 0.5
 
 
 class MyGame(arcade.Window):
@@ -48,6 +48,8 @@ class MyGame(arcade.Window):
         #Variable für Hintergund
         self.background_list = None
         self.background_sprite = []
+        self.background_list2 = None
+        self.background_sprite2 = []
 
     def setup(self):
         """Set up the game here. Call this function to restart the game."""
@@ -99,17 +101,28 @@ class MyGame(arcade.Window):
 
         #Hintergrund
         self.background_list = arcade.SpriteList()
+        self.background_list2 = arcade.SpriteList()
 
         #Zwei Hintergrund sprites
         for i in range (2):
             background = arcade.Sprite(
-                "Sprites/Background.png",
+                "Sprites/Hintergrund.png",
                 BACKGROUND_SCALING
             )
             background.center_x = background.width * i
             background.center_y = SCREEN_HEIGHT // 2
             self.background_sprite.append(background)
             self.background_list.append(background)
+
+        for i in range (2):
+            background2 = arcade.Sprite(
+                "Sprites/Mittelgrund.png",
+                BACKGROUND_SCALING
+            )
+            background2.center_x = background2.width * i
+            background2.center_y = SCREEN_HEIGHT // 2
+            self.background_sprite2.append(background2)
+            self.background_list.append(background2)
 
     def on_draw(self):
         """Render the screen."""
@@ -127,7 +140,7 @@ class MyGame(arcade.Window):
         self.gui_camera.use()
 
         # Draw our score on the screen, scrolling it with the viewport
-        score_text = f"Score: {self.score}"
+        score_text = f"Score: {round(self.score, None)}"
         arcade.draw_text(
             score_text,
             10,
@@ -150,11 +163,15 @@ class MyGame(arcade.Window):
         for background in self.background_sprite:
             background.center_x -= BACKGROUND_SPEED
 
-        if background.right <= 0:
-            background.left = max(sprite.right for sprite in self.background_sprite)
+            if background.right <= 0:
+                background.left = max(sprite.right for sprite in self.background_sprite)
+
+        for background2 in self.background_sprite2:
+            background2.center_x -= BACKGROUND_SPEED * 3
 
         # Move the player with the physics engine
         self.physics_engine.update()
+        self.score += delta_time * 10
 
 def main():
     """Main function"""
