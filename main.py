@@ -175,7 +175,7 @@ class MyGame(arcade.Window):
         self.gui_camera.use()
         arcade.draw_text(
             f"Score: {int(self.score)}",
-            1300, 480,
+            1300, 465,
             arcade.csscolor.BLACK,
             24,
             font_name="Consolas"
@@ -184,7 +184,7 @@ class MyGame(arcade.Window):
         # Schwierigkeitsgrad anzeigen
         arcade.draw_text(
             f"Level: {self.difficulty_level}",
-            10, 480,
+            10, 465,
             arcade.csscolor.RED,
             24,
             font_name="Consolas"
@@ -216,11 +216,12 @@ class MyGame(arcade.Window):
             if bg.right <= 0:
                 bg.left = max(s.right for s in self.background_sprite)
             if self.score > 1500:
-                bg = arcade.Sprite("Sprites/Hintergrund Nacht.png", BACKGROUND_SCALING)
-                bg.center_x = bg.width * i
-                bg.center_y = SCREEN_HEIGHT // 2
-                self.background_sprite.append(bg)
-                self.background_list.append(bg)
+                for i in range(2):
+                    bg = arcade.Sprite("Sprites/Hintergrund Nacht.png", BACKGROUND_SCALING)
+                    bg.center_x = bg.width * i
+                    bg.center_y = SCREEN_HEIGHT // 2
+                    self.background_sprite.append(bg)
+                    self.background_list.append(bg)
 
         # Mittelgrundbewegung
         for mg in self.midground_sprite:
