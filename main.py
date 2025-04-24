@@ -1,5 +1,5 @@
 """
-Platformer Game mit Hindernissen
+Platformer Game mit dynamischem Schwierigkeitsgrad
 """
 import arcade
 import random
@@ -16,8 +16,7 @@ TILE_SCALING = 0.5
 
 # Konstanten für die Bewegung
 BACKGROUND_SCALING = 1.0
-BACKGROUND_SPEED = 5
-GROUND_SCROLL_SPEED = 10
+BASE_SPEED = 10  # Grundgeschwindigkeit
 
 # Animationseinstellungen
 UPDATES_PER_FRAME = 8
@@ -45,8 +44,8 @@ class Player(arcade.Sprite):
 class Obstacle(arcade.Sprite):
     def __init__(self, texture_path):
         super().__init__(texture_path, OBSTACLE_SCALING)
-        self.bottom = 70  # Standardposition am Boden
-        self.left = SCREEN_WIDTH  # Rechts vom Bildschirm starten
+        self.bottom = 70
+        self.left = SCREEN_WIDTH
 
 class MyGame(arcade.Window):
     def __init__(self):
@@ -57,8 +56,10 @@ class MyGame(arcade.Window):
         self.physics_engine = None
         self.gui_camera = None
         self.score = 0
-        self.obstacle_list = None
+        self.game_speed = BASE_SPEED
         self.spawn_timer = 0
+        self.difficulty_level = 1
+        self.max_difficulty = 10
 
         # Hintergrundvariablen
         self.background_list = None
@@ -71,6 +72,8 @@ class MyGame(arcade.Window):
     def setup(self):
         self.gui_camera = arcade.camera.Camera2D()
         self.score = 0
+        self.game_speed = BASE_SPEED
+        self.difficulty_level = 1
         self.scene = arcade.Scene()
         self.obstacle_list = arcade.SpriteList()
 
@@ -118,21 +121,51 @@ class MyGame(arcade.Window):
         )
 
     def spawn_obstacle(self):
-        """Erstellt ein neues Hindernis"""
+        """Erstellt ein neues Hindernis mit Schwierigkeitsanpassung"""
+        # Schwierigkeitsabhängige Parameter
         obstacle_types = [
-            ("Sprites/Cactus1.png", 70),  # Bodenhindernis
-            ("Sprites/Cactus2.png", 70),
-            ("Sprites/Bird.png", 150)    # Fliegendes Hindernis
+            ("Sprites/Cactus1.png", 70, 0.5),  # (Pfad, Höhe, Wahrscheinlichkeit)
+            ("Sprites/Cactus2.png", 70, 0.3),
+            ("Sprites/Bird.png", 150, 0.2)
         ]
 
-        texture_path, height = random.choice(obstacle_types)
+        # Schwierigkeitsabhängige Anpassungen
+        if self.difficulty_level > 3:
+            obstacle_types.append(("Sprites/Cactus3.png", 70, 0.4))
+        if self.difficulty_level > 5:
+            obstacle_types[2] = ("Sprites/Bird.png", 170, 0.3)  # Höhere Vögel
+        if self.difficulty_level > 7:
+            obstacle_types.append(("Sprites/Bird2.png", 190, 0.2))
+
+        # Normalisierte Wahrscheinlichkeiten
+        total = sum(w for _, _, w in obstacle_types)
+        probabilities = [w/total for _, _, w in obstacle_types]
+
+        texture_path, height, _ = random.choices(
+            obstacle_types,
+            weights=probabilities,
+            k=1
+        )[0]
+
         obstacle = Obstacle(texture_path)
         obstacle.bottom = height
         self.obstacle_list.append(obstacle)
 
+    def update_difficulty(self):
+        """Passt den Schwierigkeitsgrad basierend auf dem Score an"""
+        self.difficulty_level = min(
+            self.max_difficulty,
+            1 + int(self.score / 300)  # Alle 1000 Punkte +1 Level
+        )
+
+        # Geschwindigkeitssteigerung
+        self.game_speed = BASE_SPEED * (1 + 0.2 * self.difficulty_level)
+
+        # Sprungphysik anpassen
+        self.physics_engine.gravity_constant = 1 + 0.1 * self.difficulty_level
+
     def on_draw(self):
         self.clear()
-        # Zeichenreihenfolge:
         self.background_list.draw()
         self.midground_list.draw()
         self.ground_list.draw()
@@ -142,44 +175,62 @@ class MyGame(arcade.Window):
         self.gui_camera.use()
         arcade.draw_text(
             f"Score: {int(self.score)}",
-            1350, 480,
+            1300, 480,
             arcade.csscolor.BLACK,
-            18,
+            24,
+            font_name="Consolas"
+        )
+
+        # Schwierigkeitsgrad anzeigen
+        arcade.draw_text(
+            f"Level: {self.difficulty_level}",
+            10, 480,
+            arcade.csscolor.RED,
+            24,
             font_name="Consolas"
         )
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.UP or key == arcade.key.SPACE:
             if self.physics_engine.can_jump():
-                self.player_sprite.change_y = 20
+                self.player_sprite.change_y = 20 + 2 * self.difficulty_level  # Höhere Sprünge
                 self.player_sprite.is_jumping = True
 
     def on_update(self, delta_time):
+        # Schwierigkeit updaten
+        self.update_difficulty()
+
         # Hindernis-Spawn-System
         self.spawn_timer += delta_time
-        if self.spawn_timer > random.uniform(1.5, 3.0):
+        spawn_interval = max(0.5, 3 - 0.2 * self.difficulty_level)  # Schnelleres Spawning
+        if self.spawn_timer > random.uniform(spawn_interval*0.8, spawn_interval*1.2):
             self.spawn_obstacle()
             self.spawn_timer = 0
 
-        # Bewegung aller Elemente
+        # Bewegungssystem
+        speed_factor = self.game_speed / BASE_SPEED
+
+        # Hintergrundbewegung
         for bg in self.background_sprite:
-            bg.center_x -= BACKGROUND_SPEED * 0.5
+            bg.center_x -= BASE_SPEED * 0.2 * speed_factor
             if bg.right <= 0:
                 bg.left = max(s.right for s in self.background_sprite)
 
+        # Mittelgrundbewegung
         for mg in self.midground_sprite:
-            mg.center_x -= BACKGROUND_SPEED * 2
+            mg.center_x -= BASE_SPEED * 0.5 * speed_factor
             if mg.right <= 0:
                 mg.left = max(s.right for s in self.midground_sprite)
 
+        # Bodenbewegung
         for ground in self.ground_sprite:
-            ground.center_x -= GROUND_SCROLL_SPEED
+            ground.center_x -= self.game_speed
             if ground.right <= 0:
                 ground.left = max(s.right for s in self.ground_sprite)
 
         # Hindernisse bewegen
         for obstacle in self.obstacle_list:
-            obstacle.center_x -= GROUND_SCROLL_SPEED
+            obstacle.center_x -= self.game_speed
             if obstacle.right < 0:
                 obstacle.remove_from_sprite_lists()
 
@@ -191,7 +242,7 @@ class MyGame(arcade.Window):
         self.physics_engine.update()
         self.player_sprite.is_jumping = not self.physics_engine.can_jump()
         self.player_sprite.update_animation(delta_time)
-        self.score += delta_time * 10
+        self.score += delta_time * 10 * speed_factor  # Schnellerer Score-Anstieg
 
 def main():
     window = MyGame()
