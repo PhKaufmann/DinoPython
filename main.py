@@ -135,15 +135,18 @@ class MyGame(arcade.Window):
         if self.difficulty_level > 5:
             obstacle_types[2] = ("Sprites/Bird.png", 170, 0.3)  # Höhere Vögel
         if self.difficulty_level > 7:
-            obstacle_types.append(("Sprites/Bird2.png", 190, 0.2))
+            obstacle_types.append(("Sprites/Bird2.png", 300, 0.2))
 
-        # Normalisierte Wahrscheinlichkeiten
-        total = sum(w for _, _, w in obstacle_types)
-        probabilities = [w/total for _, _, w in obstacle_types]
-
+        # Normalisierung der Wahrscheinlichkeiten
+        total_weight = sum(w for _, _, w in obstacle_types)
+        normalized_types = [
+            (path, height, weight / total_weight)
+            for path, height, weight in obstacle_types
+        ]
         texture_path, height, _ = random.choices(
-            obstacle_types,
-            weights=probabilities,
+            normalized_types,
+            weights=[w for _, _, w in normalized_types],
+
             k=1
         )[0]
 
@@ -203,7 +206,7 @@ class MyGame(arcade.Window):
         # Hindernis-Spawn-System
         self.spawn_timer += delta_time
         spawn_interval = max(0.5, 3 - 0.2 * self.difficulty_level)  # Schnelleres Spawning
-        if self.spawn_timer > random.uniform(spawn_interval*0.8, spawn_interval*1.2):
+        if self.spawn_timer > random.uniform(spawn_interval*0.5, spawn_interval*1.5):
             self.spawn_obstacle()
             self.spawn_timer = 0
 
@@ -215,13 +218,6 @@ class MyGame(arcade.Window):
             bg.center_x -= BASE_SPEED * 0.2 * speed_factor
             if bg.right <= 0:
                 bg.left = max(s.right for s in self.background_sprite)
-            if self.score > 1500:
-                for i in range(2):
-                    bg = arcade.Sprite("Sprites/Hintergrund Nacht.png", BACKGROUND_SCALING)
-                    bg.center_x = bg.width * i
-                    bg.center_y = SCREEN_HEIGHT // 2
-                    self.background_sprite.append(bg)
-                    self.background_list.append(bg)
 
         # Mittelgrundbewegung
         for mg in self.midground_sprite:
