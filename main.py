@@ -25,26 +25,44 @@ class MyGame(arcade.Window):
 
         # These are 'lists' that keep track of our sprites. Each sprite should
         # go into a list.
-        self.wall_list = None
-        self.player_list = None
+        self.scene = None
 
         # Separate variable that holds the player sprite
         self.player_sprite = None
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
 
+        # Our physics engine
+        self.physics_engine = None
+
+        # A Camera that can be used to draw GUI elements
+        self.gui_camera = None
+
+        # Keep track of the score
+        self.score = 0
+
     def setup(self):
         """Set up the game here. Call this function to restart the game."""
+
+        # Setup the GUI Camera
+        self.gui_camera = arcade.camera.Camera2D()
+
+        # Keep track of the score
+        self.score = 0
+
+        #Player Scene
+        self.scene = arcade.Scene()
+
         # Create the Sprite lists
-        self.player_list = arcade.SpriteList()
-        self.wall_list = arcade.SpriteList()
+        self.scene.add_sprite_list("Player")
+        self.scene.add_sprite_list("Walls")
 
         # Set up the player, specifically placing it at these coordinates.
         image_source = "Sprites/Dino/Dino 1.png"
         self.player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
-        self.player_sprite.center_x = 64
-        self.player_sprite.center_y = 128
-        self.player_list.append(self.player_sprite)
+        self.player_sprite.center_x = 120
+        self.player_sprite.center_y = 112
+        self.scene.add_sprite("Player", self.player_sprite)
 
         # Create the ground
         # This shows using a loop to place multiple sprites horizontally
@@ -52,7 +70,7 @@ class MyGame(arcade.Window):
             wall = arcade.Sprite(":resources:images/tiles/grassMid.png", TILE_SCALING)
             wall.center_x = x
             wall.center_y = 32
-            self.wall_list.append(wall)
+            self.scene.add_sprite("Walls", wall)
 
         # Put some crates on the ground
         # This shows using a coordinate list to place sprites
@@ -64,7 +82,12 @@ class MyGame(arcade.Window):
                 ":resources:images/tiles/boxCrate_double.png", TILE_SCALING
             )
             wall.position = coordinate
-            self.wall_list.append(wall)
+            self.scene.add_sprite("Walls", wall)
+
+        # Create the 'physics engine'
+        self.physics_engine = arcade.PhysicsEnginePlatformer(
+            self.player_sprite, gravity_constant=1, walls=self.scene["Walls"]
+        )
 
     def on_draw(self):
         """Render the screen."""
@@ -72,10 +95,35 @@ class MyGame(arcade.Window):
         # Clear the screen to the background color
         self.clear()
 
-        # Draw our sprites
-        self.wall_list.draw()
-        self.player_list.draw(pixelated=True)
+        # Draw our Scene
+        self.scene.draw(pixelated = True)
 
+        # Activate the GUI camera before drawing GUI elements
+        self.gui_camera.use()
+
+        # Draw our score on the screen, scrolling it with the viewport
+        score_text = f"Score: {self.score}"
+        arcade.draw_text(
+            score_text,
+            10,
+            10,
+            arcade.csscolor.WHITE,
+            18,
+            font_name="Consolas",
+        )
+
+    def on_key_press(self, key, modifiers):
+        """Called whenever a key is pressed."""
+
+        if key == arcade.key.UP or key == arcade.key.SPACE:
+            if self.physics_engine.can_jump():
+                self.player_sprite.change_y = 20
+
+    def on_update(self, delta_time):
+        """Movement and game logic"""
+
+        # Move the player with the physics engine
+        self.physics_engine.update()
 
 def main():
     """Main function"""
