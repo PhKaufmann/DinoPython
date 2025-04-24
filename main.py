@@ -1,127 +1,121 @@
 """
-Platformer Game
+Platformer Game mit scrollendem Boden
 """
 import arcade
 
 
 # Constants
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 650
-SCREEN_TITLE = "Platformer"
+SCREEN_WIDTH = 1500
+SCREEN_HEIGHT = 500
+SCREEN_TITLE = "Dino Runner"
 
 # Constants used to scale our sprites from their original size
 CHARACTER_SCALING = 5
 TILE_SCALING = 0.5
 
-# Konstanten für die Hintergrundbewegung
+# Konstanten für die Bewegung
 BACKGROUND_SCALING = 1.0
-BACKGROUND_SPEED = 2
+BACKGROUND_SPEED = 5  # Erhöhte Geschwindigkeit
+GROUND_SCROLL_SPEED = 10  # Bodengeschwindigkeit
+
 
 OBSTACLE_SCALING = 0.3
 OBSTACLE_SPEED = 5
 OBSTACLE_SPAWN_INTERVAL = 6.0  # Sekunden zwischen Hindernissen
 
-class MyGame(arcade.Window):
-    """
-    Main application class.
-    """
+# Animationseinstellungen
+UPDATES_PER_FRAME = 8
 
+
+class Player(arcade.Sprite):
     def __init__(self):
+        self.run_textures = []
+        for i in range(1, 7):
+            texture = arcade.load_texture(f"Sprites/Dino/Dino {i}.png")
+            self.run_textures.append(texture)
 
-        # Call the parent class and set up the window
+        super().__init__(self.run_textures[0], CHARACTER_SCALING)
+
+        self.cur_texture = 0
+        self.scale = CHARACTER_SCALING
+        self.is_jumping = False
+
+    def update_animation(self, delta_time: float = 1/60):
+        if not self.is_jumping:
+            self.cur_texture += 1
+            if self.cur_texture // UPDATES_PER_FRAME >= len(self.run_textures):
+                self.cur_texture = 0
+            self.texture = self.run_textures[self.cur_texture // UPDATES_PER_FRAME]
+
+class MyGame(arcade.Window):
+    def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
 
-        # These are 'lists' that keep track of our sprites. Each sprite should
-        # go into a list.
         self.scene = None
-
-        # Separate variable that holds the player sprite
         self.player_sprite = None
-
-        arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
-
-        # Our physics engine
         self.physics_engine = None
-
-        # A Camera that can be used to draw GUI elements
         self.gui_camera = None
-
-        # Keep track of the score
         self.score = 0
 
-        #Variable für Hintergund
+        # Hintergrundvariablen
         self.background_list = None
         self.background_sprite = []
+        self.midground_list = None
+        self.midground_sprite = []
+        self.ground_list = None
+        self.ground_sprite = []
 
         self.obstacles_list = None
         self.game_over = False
         self.spawn_timer = 0
 
     def setup(self):
-        """Set up the game here. Call this function to restart the game."""
-
-        # Setup the GUI Camera
         self.gui_camera = arcade.camera.Camera2D()
-
-        # Keep track of the score
         self.score = 0
-
-        #Player Scene
         self.scene = arcade.Scene()
 
-        # Create the Sprite lists
-        self.scene.add_sprite_list("Player")
-        self.scene.add_sprite_list("Walls")
-
-        # Set up the player, specifically placing it at these coordinates.
-        image_source = "Sprites/Dino/Dino 1.png"
-        self.player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
+        # Spieler erstellen
+        self.player_sprite = Player()
         self.player_sprite.center_x = 120
         self.player_sprite.center_y = 112
         self.scene.add_sprite("Player", self.player_sprite)
 
-        # Create the ground
-        # This shows using a loop to place multiple sprites horizontally
-        for x in range(0, 1250, 64):
-            wall = arcade.Sprite(":resources:images/tiles/grassMid.png", TILE_SCALING)
-            wall.center_x = x
-            wall.center_y = 32
-            self.scene.add_sprite("Walls", wall)
+        # Boden-SpriteList erstellen
+        self.ground_list = arcade.SpriteList()
+        self.scene.add_sprite_list("Walls", sprite_list=self.ground_list)
 
-        # Put some crates on the ground
-        # This shows using a coordinate list to place sprites
-        coordinate_list = [[512, 96], [256, 96], [768, 96]]
+        # Bodensegmente erstellen
+        for i in range(35):  # 3 Bodenabschnitte für nahtloses Scrolling
+            ground = arcade.Sprite("Sprites/Sand.jpg", 0.33)
+            ground.left = ground.width * i
+            ground.bottom = 0
+            self.ground_sprite.append(ground)
+            self.ground_list.append(ground)
 
-        self.obstacles_list = arcade.SpriteList()
-        self.game_over = False
-        self.spawn_timer = 0
-
-        for coordinate in coordinate_list:
-            # Add a crate on the ground
-            wall = arcade.Sprite(
-                ":resources:images/tiles/boxCrate_double.png", TILE_SCALING
-            )
-            wall.position = coordinate
-            self.scene.add_sprite("Walls", wall)
-
-        # Create the 'physics engine'
-        self.physics_engine = arcade.PhysicsEnginePlatformer(
-            self.player_sprite, gravity_constant=1, walls=self.scene["Walls"]
-        )
-
-        #Hintergrund
+        # Hintergrund-System
         self.background_list = arcade.SpriteList()
+        self.midground_list = arcade.SpriteList()
 
-        #Zwei Hintergrund sprites
-        for i in range (2):
-            background = arcade.Sprite(
-                "Sprites/Background.png",
-                BACKGROUND_SCALING
-            )
-            background.center_x = background.width * i
-            background.center_y = SCREEN_HEIGHT // 2
-            self.background_sprite.append(background)
-            self.background_list.append(background)
+        # Hintergrundebenen
+        for i in range(2):
+            bg = arcade.Sprite("Sprites/Hintergrund.png", BACKGROUND_SCALING)
+            bg.center_x = bg.width * i
+            bg.center_y = SCREEN_HEIGHT // 2
+            self.background_sprite.append(bg)
+            self.background_list.append(bg)
+
+            mg = arcade.Sprite("Sprites/Mittelgrund.png", BACKGROUND_SCALING)
+            mg.center_x = mg.width * i
+            mg.center_y = 144
+            self.midground_sprite.append(mg)
+            self.midground_list.append(mg)
+
+        # Physik-Engine
+        self.physics_engine = arcade.PhysicsEnginePlatformer(
+            self.player_sprite,
+            gravity_constant=1,
+            walls=self.ground_list
+        )
 
     def spawn_obstacle(self):
         """Erstellt ein neues Hindernis"""
@@ -134,9 +128,6 @@ class MyGame(arcade.Window):
         self.obstacles_list.append(obstacle)
 
     def on_draw(self):
-        """Render the screen."""
-
-        # Clear the screen to the background color
         self.clear()
 
         if not self.game_over:
@@ -229,13 +220,56 @@ class MyGame(arcade.Window):
 
             self.physics_engine.update()
 
+        # Zeichenreihenfolge:
+        self.background_list.draw()
+        self.midground_list.draw()
+        self.ground_list.draw()
+        self.scene.draw(pixelated=True)
+
+        self.gui_camera.use()
+        arcade.draw_text(
+            f"Score: {int(self.score)}",
+            10, 10,
+            arcade.csscolor.WHITE,
+            18,
+            font_name="Kenney Blocks"
+        )
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.UP or key == arcade.key.SPACE:
+            if self.physics_engine.can_jump():
+                self.player_sprite.change_y = 20
+                self.player_sprite.is_jumping = True
+
+    def on_update(self, delta_time):
+        # Hintergrundbewegung
+        for bg in self.background_sprite:
+            bg.center_x -= BACKGROUND_SPEED * 0.5
+            if bg.right <= 0:
+                bg.left = max(s.right for s in self.background_sprite)
+
+        # Mittelgrundbewegung
+        for mg in self.midground_sprite:
+            mg.center_x -= BACKGROUND_SPEED * 2
+            if mg.right <= 0:
+                mg.left = max(s.right for s in self.midground_sprite)
+
+        # Bodenbewegung
+        for ground in self.ground_sprite:
+            ground.center_x -= GROUND_SCROLL_SPEED
+            if ground.right <= 0:
+                ground.left = max(s.right for s in self.ground_sprite)
+
+        # Physik und Animation
+        self.physics_engine.update()
+        self.player_sprite.is_jumping = not self.physics_engine.can_jump()
+        self.player_sprite.update_animation(delta_time)
+        self.score += delta_time * 10
 
 def main():
-    """Main function"""
     window = MyGame()
     window.setup()
     arcade.run()
-
 
 if __name__ == "__main__":
     main()
