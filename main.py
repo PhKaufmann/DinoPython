@@ -3,6 +3,7 @@ Platformer Game
 """
 import arcade
 
+
 # Constants
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 650
@@ -16,6 +17,9 @@ TILE_SCALING = 0.5
 BACKGROUND_SCALING = 1.0
 BACKGROUND_SPEED = 2
 
+OBSTACLE_SCALING = 0.3
+OBSTACLE_SPEED = 5
+OBSTACLE_SPAWN_INTERVAL = 6.0  # Sekunden zwischen Hindernissen
 
 class MyGame(arcade.Window):
     """
@@ -48,6 +52,10 @@ class MyGame(arcade.Window):
         #Variable für Hintergund
         self.background_list = None
         self.background_sprite = []
+
+        self.obstacles_list = None
+        self.game_over = False
+        self.spawn_timer = 0
 
     def setup(self):
         """Set up the game here. Call this function to restart the game."""
@@ -84,6 +92,10 @@ class MyGame(arcade.Window):
         # This shows using a coordinate list to place sprites
         coordinate_list = [[512, 96], [256, 96], [768, 96]]
 
+        self.obstacles_list = arcade.SpriteList()
+        self.game_over = False
+        self.spawn_timer = 0
+
         for coordinate in coordinate_list:
             # Add a crate on the ground
             wall = arcade.Sprite(
@@ -111,50 +123,112 @@ class MyGame(arcade.Window):
             self.background_sprite.append(background)
             self.background_list.append(background)
 
+    def spawn_obstacle(self):
+        """Erstellt ein neues Hindernis"""
+        obstacle = arcade.Sprite(
+            "Sprites/Hindernis.PNG",
+            OBSTACLE_SCALING
+        )
+        obstacle.center_x = SCREEN_WIDTH
+        obstacle.center_y = 1  # Höhe anpassen
+        self.obstacles_list.append(obstacle)
+
     def on_draw(self):
         """Render the screen."""
 
         # Clear the screen to the background color
         self.clear()
 
-        #Hintergrund zuerst zeichnen
-        self.background_list.draw()
+        if not self.game_over:
+            self.background_list.draw()
+            self.scene.draw(pixelated=True)
+            self.obstacles_list.draw()
 
-        # Draw our Scene
-        self.scene.draw(pixelated = True)
-
-        # Activate the GUI camera before drawing GUI elements
-        self.gui_camera.use()
-
-        # Draw our score on the screen, scrolling it with the viewport
-        score_text = f"Score: {self.score}"
-        arcade.draw_text(
-            score_text,
-            10,
-            10,
-            arcade.csscolor.WHITE,
-            18,
-            font_name="Consolas",
-        )
+            # Score anzeigen
+            self.gui_camera.use()
+            score_text = f"Score: {self.score}"
+            arcade.draw_text(
+                score_text,
+                10,
+                10,
+                arcade.csscolor.WHITE,
+                18,
+                font_name="Consolas",
+            )
+        else:
+            # Game Over Screen
+            arcade.draw_text(
+                "GAME OVER",
+                SCREEN_WIDTH / 2,
+                SCREEN_HEIGHT / 2,
+                arcade.color.RED,
+                64,
+                anchor_x="center",
+                anchor_y="center"
+            )
+            arcade.draw_text(
+                f"Final Score: {self.score}",
+                SCREEN_WIDTH / 2,
+                SCREEN_HEIGHT / 2 - 64,
+                arcade.color.WHITE,
+                32,
+                anchor_x="center",
+                anchor_y="center"
+            )
+            arcade.draw_text(
+                "Press SPACE to restart",
+                SCREEN_WIDTH / 2,
+                SCREEN_HEIGHT / 2 - 128,
+                arcade.color.WHITE,
+                32,
+                anchor_x="center",
+                anchor_y="center"
+            )
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed."""
 
-        if key == arcade.key.UP or key == arcade.key.SPACE:
-            if self.physics_engine.can_jump():
-                self.player_sprite.change_y = 20
+        if not self.game_over:
+            if key == arcade.key.UP or key == arcade.key.SPACE:
+                if self.physics_engine.can_jump():
+                    self.player_sprite.change_y = 20
+        else:
+            if key == arcade.key.SPACE:
+                # Spiel neu starten
+                self.setup()
 
     def on_update(self, delta_time):
         """Movement and game logic"""
         #Hintergrund bewegen
-        for background in self.background_sprite:
-            background.center_x -= BACKGROUND_SPEED
+        if not self.game_over:
+            # Hintergrund Update
+            for background in self.background_sprite:
+                background.center_x -= BACKGROUND_SPEED
+                if background.right <= 0:
+                    background.left = max(sprite.right for sprite in self.background_sprite)
 
-        if background.right <= 0:
-            background.left = max(sprite.right for sprite in self.background_sprite)
+            # Hindernisse spawnen
+            self.spawn_timer += delta_time
+            if self.spawn_timer >= OBSTACLE_SPAWN_INTERVAL:
+                self.spawn_obstacle()
+                self.spawn_timer = 0
 
-        # Move the player with the physics engine
-        self.physics_engine.update()
+            # Hindernisse bewegen
+            for obstacle in self.obstacles_list:
+                obstacle.center_x -= OBSTACLE_SPEED
+                if obstacle.right < 0:
+                    obstacle.remove_from_sprite_lists()
+                    self.score += 1
+
+            # Kollisionserkennung
+            if arcade.check_for_collision_with_list(
+                    self.player_sprite,
+                    self.obstacles_list
+            ):
+                self.game_over = True
+
+            self.physics_engine.update()
+
 
 def main():
     """Main function"""
