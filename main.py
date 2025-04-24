@@ -12,6 +12,10 @@ SCREEN_TITLE = "Platformer"
 CHARACTER_SCALING = 5
 TILE_SCALING = 0.5
 
+# Konstanten für die Hintergrundbewegung
+BACKGROUND_SCALING = 1.0
+BACKGROUND_SPEED = 2
+
 
 class MyGame(arcade.Window):
     """
@@ -40,6 +44,10 @@ class MyGame(arcade.Window):
 
         # Keep track of the score
         self.score = 0
+
+        #Variable für Hintergund
+        self.background_list = None
+        self.background_sprite = []
 
     def setup(self):
         """Set up the game here. Call this function to restart the game."""
@@ -89,11 +97,28 @@ class MyGame(arcade.Window):
             self.player_sprite, gravity_constant=1, walls=self.scene["Walls"]
         )
 
+        #Hintergrund
+        self.background_list = arcade.SpriteList()
+
+        #Zwei Hintergrund sprites
+        for i in range (2):
+            background = arcade.Sprite(
+                "Sprites/Background.png",
+                BACKGROUND_SCALING
+            )
+            background.center_x = background.width * i
+            background.center_y = SCREEN_HEIGHT // 2
+            self.background_sprite.append(background)
+            self.background_list.append(background)
+
     def on_draw(self):
         """Render the screen."""
 
         # Clear the screen to the background color
         self.clear()
+
+        #Hintergrund zuerst zeichnen
+        self.background_list.draw()
 
         # Draw our Scene
         self.scene.draw(pixelated = True)
@@ -121,6 +146,12 @@ class MyGame(arcade.Window):
 
     def on_update(self, delta_time):
         """Movement and game logic"""
+        #Hintergrund bewegen
+        for background in self.background_sprite:
+            background.center_x -= BACKGROUND_SPEED
+
+        if background.right <= 0:
+            background.left = max(sprite.right for sprite in self.background_sprite)
 
         # Move the player with the physics engine
         self.physics_engine.update()
