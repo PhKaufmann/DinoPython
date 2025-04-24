@@ -1,7 +1,8 @@
 """
-Platformer Game mit scrollendem Boden
+Platformer Game mit Hindernissen
 """
 import arcade
+import random
 
 # Constants
 SCREEN_WIDTH = 1500
@@ -10,12 +11,13 @@ SCREEN_TITLE = "Dino Runner"
 
 # Constants used to scale our sprites from their original size
 CHARACTER_SCALING = 5
+OBSTACLE_SCALING = 2.5
 TILE_SCALING = 0.5
 
 # Konstanten für die Bewegung
 BACKGROUND_SCALING = 1.0
-BACKGROUND_SPEED = 5  # Erhöhte Geschwindigkeit
-GROUND_SCROLL_SPEED = 10  # Bodengeschwindigkeit
+BACKGROUND_SPEED = 5
+GROUND_SCROLL_SPEED = 10
 
 # Animationseinstellungen
 UPDATES_PER_FRAME = 8
@@ -40,6 +42,12 @@ class Player(arcade.Sprite):
                 self.cur_texture = 0
             self.texture = self.run_textures[self.cur_texture // UPDATES_PER_FRAME]
 
+class Obstacle(arcade.Sprite):
+    def __init__(self, texture_path):
+        super().__init__(texture_path, OBSTACLE_SCALING)
+        self.bottom = 70  # Standardposition am Boden
+        self.left = SCREEN_WIDTH  # Rechts vom Bildschirm starten
+
 class MyGame(arcade.Window):
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
@@ -49,6 +57,8 @@ class MyGame(arcade.Window):
         self.physics_engine = None
         self.gui_camera = None
         self.score = 0
+        self.obstacle_list = None
+        self.spawn_timer = 0
 
         # Hintergrundvariablen
         self.background_list = None
@@ -62,6 +72,7 @@ class MyGame(arcade.Window):
         self.gui_camera = arcade.camera.Camera2D()
         self.score = 0
         self.scene = arcade.Scene()
+        self.obstacle_list = arcade.SpriteList()
 
         # Spieler erstellen
         self.player_sprite = Player()
@@ -74,7 +85,7 @@ class MyGame(arcade.Window):
         self.scene.add_sprite_list("Walls", sprite_list=self.ground_list)
 
         # Bodensegmente erstellen
-        for i in range(35):  # 3 Bodenabschnitte für nahtloses Scrolling
+        for i in range(35):
             ground = arcade.Sprite("Sprites/Sand.jpg", 0.33)
             ground.left = ground.width * i
             ground.bottom = 0
@@ -106,21 +117,35 @@ class MyGame(arcade.Window):
             walls=self.ground_list
         )
 
+    def spawn_obstacle(self):
+        """Erstellt ein neues Hindernis"""
+        obstacle_types = [
+            ("Sprites/Cactus1.png", 70),  # Bodenhindernis
+            ("Sprites/Cactus2.png", 70),
+            ("Sprites/Bird.png", 150)    # Fliegendes Hindernis
+        ]
+
+        texture_path, height = random.choice(obstacle_types)
+        obstacle = Obstacle(texture_path)
+        obstacle.bottom = height
+        self.obstacle_list.append(obstacle)
+
     def on_draw(self):
         self.clear()
         # Zeichenreihenfolge:
         self.background_list.draw()
         self.midground_list.draw()
         self.ground_list.draw()
+        self.obstacle_list.draw(pixelated=True)
         self.scene.draw(pixelated=True)
 
         self.gui_camera.use()
         arcade.draw_text(
             f"Score: {int(self.score)}",
-            10, 10,
-            arcade.csscolor.WHITE,
+            1350, 480,
+            arcade.csscolor.BLACK,
             18,
-            font_name="Kenney Blocks"
+            font_name="Consolas"
         )
 
     def on_key_press(self, key, modifiers):
@@ -130,23 +155,37 @@ class MyGame(arcade.Window):
                 self.player_sprite.is_jumping = True
 
     def on_update(self, delta_time):
-        # Hintergrundbewegung
+        # Hindernis-Spawn-System
+        self.spawn_timer += delta_time
+        if self.spawn_timer > random.uniform(1.5, 3.0):
+            self.spawn_obstacle()
+            self.spawn_timer = 0
+
+        # Bewegung aller Elemente
         for bg in self.background_sprite:
             bg.center_x -= BACKGROUND_SPEED * 0.5
             if bg.right <= 0:
                 bg.left = max(s.right for s in self.background_sprite)
 
-        # Mittelgrundbewegung
         for mg in self.midground_sprite:
             mg.center_x -= BACKGROUND_SPEED * 2
             if mg.right <= 0:
                 mg.left = max(s.right for s in self.midground_sprite)
 
-        # Bodenbewegung
         for ground in self.ground_sprite:
             ground.center_x -= GROUND_SCROLL_SPEED
             if ground.right <= 0:
                 ground.left = max(s.right for s in self.ground_sprite)
+
+        # Hindernisse bewegen
+        for obstacle in self.obstacle_list:
+            obstacle.center_x -= GROUND_SCROLL_SPEED
+            if obstacle.right < 0:
+                obstacle.remove_from_sprite_lists()
+
+        # Kollisionsabfrage
+        if arcade.check_for_collision_with_list(self.player_sprite, self.obstacle_list):
+            arcade.exit()
 
         # Physik und Animation
         self.physics_engine.update()
