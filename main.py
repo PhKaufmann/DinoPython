@@ -4,8 +4,8 @@ Platformer Game
 import arcade
 
 # Constants
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 650
+SCREEN_WIDTH = 1500
+SCREEN_HEIGHT = 500
 SCREEN_TITLE = "Platformer"
 
 # Constants used to scale our sprites from their original size
@@ -76,10 +76,10 @@ class MyGame(arcade.Window):
 
         # Create the ground
         # This shows using a loop to place multiple sprites horizontally
-        for x in range(0, 1250, 64):
-            wall = arcade.Sprite(":resources:images/tiles/grassMid.png", TILE_SCALING)
+        for x in range(0, 1600, 64):
+            wall = arcade.Sprite("Sprites/Sand.jpg", 0.33)
             wall.center_x = x
-            wall.center_y = 32
+            wall.center_y = 0
             self.scene.add_sprite("Walls", wall)
 
         # Put some crates on the ground
@@ -120,7 +120,7 @@ class MyGame(arcade.Window):
                 BACKGROUND_SCALING
             )
             background2.center_x = background2.width * i
-            background2.center_y = SCREEN_HEIGHT // 2
+            background2.center_y = 144
             self.background_sprite2.append(background2)
             self.background_list.append(background2)
 
@@ -167,7 +167,10 @@ class MyGame(arcade.Window):
                 background.left = max(sprite.right for sprite in self.background_sprite)
 
         for background2 in self.background_sprite2:
-            background2.center_x -= BACKGROUND_SPEED * 3
+            background2.center_x -= BACKGROUND_SPEED * 4
+
+            if background2.right <= 0:
+                background2.left = max(sprite.right for sprite in self.background_sprite2)
 
         # Move the player with the physics engine
         self.physics_engine.update()
