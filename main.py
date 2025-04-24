@@ -59,7 +59,7 @@ class MyGame(arcade.Window):
         self.game_speed = BASE_SPEED
         self.spawn_timer = 0
         self.difficulty_level = 1
-        self.max_difficulty = 10
+        self.max_difficulty = 20
 
         # Hintergrundvariablen
         self.background_list = None
