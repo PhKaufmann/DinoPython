@@ -215,6 +215,12 @@ class MyGame(arcade.Window):
             bg.center_x -= BASE_SPEED * 0.2 * speed_factor
             if bg.right <= 0:
                 bg.left = max(s.right for s in self.background_sprite)
+            if self.score > 1500:
+                bg = arcade.Sprite("Sprites/Hintergrund Nacht.png", BACKGROUND_SCALING)
+                bg.center_x = bg.width * i
+                bg.center_y = SCREEN_HEIGHT // 2
+                self.background_sprite.append(bg)
+                self.background_list.append(bg)
 
         # Mittelgrundbewegung
         for mg in self.midground_sprite:
