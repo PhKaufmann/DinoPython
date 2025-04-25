@@ -46,6 +46,14 @@ class Obstacle(arcade.Sprite):
         super().__init__(texture_path, OBSTACLE_SCALING)
         self.bottom = 70
         self.left = SCREEN_WIDTH
+        self.obstacle_type = "cactus"  # Standardmäßig als Kaktus
+
+    def update(self, game_speed):
+        if self.obstacle_type == "bird":
+            self.center_x -= game_speed * (game_speed * 0.05) * 1.2 # Vögel sind schneller
+        else:
+            self.center_x -= game_speed
+
 
 class MyGame(arcade.Window):
     def __init__(self):
@@ -124,34 +132,34 @@ class MyGame(arcade.Window):
         """Erstellt ein neues Hindernis mit Schwierigkeitsanpassung"""
         # Schwierigkeitsabhängige Parameter
         obstacle_types = [
-            ("Sprites/Cactus1.png", 70, 0.5),  # (Pfad, Höhe, Wahrscheinlichkeit)
-            ("Sprites/Cactus2.png", 70, 0.3),
-            ("Sprites/Bird.png", 150, 0.2)
+            ("Sprites/Cactus1.png", 70, 0.5, "cactus"),  # (Pfad, Höhe, Wahrscheinlichkeit, Typ)
+            ("Sprites/Cactus2.png", 70, 0.3, "cactus"),
+            ("Sprites/Bird.png", 150, 0.2, "bird")
         ]
 
         # Schwierigkeitsabhängige Anpassungen
         if self.difficulty_level > 3:
-            obstacle_types.append(("Sprites/Cactus3.png", 70, 0.4))
+            obstacle_types.append(("Sprites/Cactus3.png", 70, 0.4, "cactus"))
         if self.difficulty_level > 5:
-            obstacle_types[2] = ("Sprites/Bird.png", 170, 0.3)  # Höhere Vögel
+            obstacle_types[2] = ("Sprites/Bird.png", 170, 0.3, "bird")  # Höhere Vögel
         if self.difficulty_level > 7:
-            obstacle_types.append(("Sprites/Bird2.png", 300, 0.2))
+            obstacle_types.append(("Sprites/Bird2.png", 300, 0.2, "bird"))
 
         # Normalisierung der Wahrscheinlichkeiten
-        total_weight = sum(w for _, _, w in obstacle_types)
+        total_weight = sum(w for _, _, w, _ in obstacle_types)
         normalized_types = [
-            (path, height, weight / total_weight)
-            for path, height, weight in obstacle_types
+            (path, height, weight / total_weight, obstacle_type)
+            for path, height, weight, obstacle_type in obstacle_types
         ]
-        texture_path, height, _ = random.choices(
+        texture_path, height, _, obstacle_type = random.choices(
             normalized_types,
-            weights=[w for _, _, w in normalized_types],
-
+            weights=[w for _, _, w, _ in normalized_types],
             k=1
         )[0]
 
         obstacle = Obstacle(texture_path)
         obstacle.bottom = height
+        obstacle.obstacle_type = obstacle_type
         self.obstacle_list.append(obstacle)
 
     def update_difficulty(self):
@@ -233,7 +241,7 @@ class MyGame(arcade.Window):
 
         # Hindernisse bewegen
         for obstacle in self.obstacle_list:
-            obstacle.center_x -= self.game_speed
+            obstacle.update(self.game_speed)
             if obstacle.right < 0:
                 obstacle.remove_from_sprite_lists()
 
