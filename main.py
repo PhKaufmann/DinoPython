@@ -21,6 +21,9 @@ BASE_SPEED = 10  # Grundgeschwindigkeit
 # Animationseinstellungen
 UPDATES_PER_FRAME = 8
 
+GAME_STATE_MENU = 0
+GAME_STATE_RUNNING = 1
+
 class Player(arcade.Sprite):
     def __init__(self):
         self.run_textures = []
@@ -34,7 +37,7 @@ class Player(arcade.Sprite):
         self.scale = CHARACTER_SCALING
         self.is_jumping = False
 
-    def update_animation(self, delta_time: float = 1/60):
+    def update_animation(self, delta_time: float = 1 / 60, **kwargs):
         if not self.is_jumping:
             self.cur_texture += 1
             if self.cur_texture // UPDATES_PER_FRAME >= len(self.run_textures):
@@ -59,7 +62,7 @@ class MyGame(arcade.Window):
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
 
-        self.scene = None
+        self.scene = arcade.Scene()
         self.player_sprite = None
         self.physics_engine = None
         self.gui_camera = None
@@ -70,63 +73,82 @@ class MyGame(arcade.Window):
         self.max_difficulty = 20
 
         # Hintergrundvariablen
-        self.background_list = None
+        self.background_list = arcade.SpriteList()
         self.background_sprite = []
-        self.midground_list = None
+        self.midground_list = arcade.SpriteList()
         self.midground_sprite = []
-        self.ground_list = None
+        self.ground_list = arcade.SpriteList()
         self.ground_sprite = []
-
-    def setup(self):
-        self.gui_camera = arcade.camera.Camera2D()
-        self.score = 0
-        self.game_speed = BASE_SPEED
-        self.difficulty_level = 1
-        self.scene = arcade.Scene()
         self.obstacle_list = arcade.SpriteList()
 
-        # Spieler erstellen
-        self.player_sprite = Player()
-        self.player_sprite.center_x = 120
-        self.player_sprite.center_y = 112
-        self.scene.add_sprite("Player", self.player_sprite)
+        #Homescreen
+        self.state = GAME_STATE_MENU
+        self.background_choice = "Sprites/Hintergrund Nacht.png"
 
-        # Boden-SpriteList erstellen
-        self.ground_list = arcade.SpriteList()
-        self.scene.add_sprite_list("Walls", sprite_list=self.ground_list)
+    def setup(self):
+        if self.state == GAME_STATE_RUNNING:
+            self.gui_camera = arcade.camera.Camera2D()
+            self.score = 0
+            self.game_speed = BASE_SPEED
+            self.difficulty_level = 1
+            self.scene = arcade.Scene()
+            self.obstacle_list = arcade.SpriteList()
 
-        # Bodensegmente erstellen
-        for i in range(35):
-            ground = arcade.Sprite("Sprites/Sand.jpg", 0.33)
-            ground.left = ground.width * i
-            ground.bottom = 0
-            self.ground_sprite.append(ground)
-            self.ground_list.append(ground)
+            # Spieler erstellen
+            self.player_sprite = Player()
+            self.player_sprite.center_x = 120
+            self.player_sprite.center_y = 112
+            self.scene.add_sprite("Player", self.player_sprite)
 
-        # Hintergrund-System
-        self.background_list = arcade.SpriteList()
-        self.midground_list = arcade.SpriteList()
+            # Boden-SpriteList erstellen
+            self.ground_list = arcade.SpriteList()
+            self.ground_sprite = []
+            self.scene.add_sprite_list("Walls", sprite_list=self.ground_list)
 
-        # Hintergrundebenen
-        for i in range(2):
-            bg = arcade.Sprite("Sprites/Hintergrund Nacht.png", BACKGROUND_SCALING)
-            bg.center_x = bg.width * i
-            bg.center_y = SCREEN_HEIGHT // 2
-            self.background_sprite.append(bg)
-            self.background_list.append(bg)
+            # Bodensegmente erstellen
+            for i in range(35):
+                ground = arcade.Sprite("Sprites/Sand.jpg", 0.33)
+                ground.left = ground.width * i
+                ground.bottom = 0
+                self.ground_sprite.append(ground)
+                self.ground_list.append(ground)
 
-            mg = arcade.Sprite("Sprites/Mittelgrund Nacht.png", BACKGROUND_SCALING)
-            mg.center_x = mg.width * i
-            mg.center_y = 144
-            self.midground_sprite.append(mg)
-            self.midground_list.append(mg)
+            # Hintergrund-System
+            self.background_list = arcade.SpriteList()
+            self.midground_list = arcade.SpriteList()
+            self.background_sprite = []
+            self.midground_sprite = []
 
-        # Physik-Engine
-        self.physics_engine = arcade.PhysicsEnginePlatformer(
-            self.player_sprite,
-            gravity_constant=1,
-            walls=self.ground_list
-        )
+            # Hintergrundebenen
+            for i in range(2):
+                bg = arcade.Sprite(self.background_choice, BACKGROUND_SCALING)
+                # bg = arcade.Sprite("Sprites/Hintergrund Nacht.png", BACKGROUND_SCALING)
+                bg.center_x = bg.width * i
+                bg.center_y = SCREEN_HEIGHT // 2
+                self.background_sprite.append(bg)
+                self.background_list.append(bg)
+
+                mg = arcade.Sprite("Sprites/Mittelgrund Nacht.png", BACKGROUND_SCALING)
+                mg.center_x = mg.width * i
+                mg.center_y = 144
+                self.midground_sprite.append(mg)
+                self.midground_list.append(mg)
+
+            # Physik-Engine
+            self.physics_engine = arcade.PhysicsEnginePlatformer(
+                self.player_sprite,
+                gravity_constant=1,
+                walls=self.ground_list
+            )
+
+    def draw_menu(self):
+        self.clear()
+        arcade.draw_text("Dino Runner", SCREEN_WIDTH / 2, SCREEN_HEIGHT - 100,
+                         arcade.color.WHITE, font_size=50, anchor_x="center")
+        arcade.draw_text("Press Enter to Start", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,
+                         arcade.color.GREEN, font_size=30, anchor_x="center")
+        arcade.draw_text("Press T for Day or N for Night", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 100,
+                         arcade.color.WHITE, font_size=20, anchor_x="center")
 
     def spawn_obstacle(self):
         """Erstellt ein neues Hindernis mit Schwierigkeitsanpassung"""
@@ -164,50 +186,67 @@ class MyGame(arcade.Window):
 
     def update_difficulty(self):
         """Passt den Schwierigkeitsgrad basierend auf dem Score an"""
-        self.difficulty_level = min(
-            self.max_difficulty,
-            1 + int(self.score / 300)  # Alle 1000 Punkte +1 Level
-        )
-
+        # Alle 1000 Punkte +1 Level
         # Geschwindigkeitssteigerung
-        self.game_speed = BASE_SPEED * (1 + 0.2 * self.difficulty_level)
-
         # Sprungphysik anpassen
-        self.physics_engine.gravity_constant = 1 + 0.1 * self.difficulty_level
+        if self.state == GAME_STATE_RUNNING and self.physics_engine is not None:
+            self.difficulty_level = min(
+                self.max_difficulty,
+                1 + int(self.score / 300)
+            )
+            self.game_speed = BASE_SPEED * (1 + 0.2 * self.difficulty_level)
+            self.physics_engine.gravity_constant = 1 + 0.1 * self.difficulty_level
+
+
+
 
     def on_draw(self):
-        self.clear()
-        self.background_list.draw()
-        self.midground_list.draw()
-        self.ground_list.draw()
-        self.obstacle_list.draw(pixelated=True)
-        self.scene.draw(pixelated=True)
+        if self.state == GAME_STATE_MENU:
+            self.draw_menu()
+        elif self.state == GAME_STATE_RUNNING:
+            self.clear()
+            self.background_list.draw()
+            self.midground_list.draw()
+            self.ground_list.draw()
+            self.obstacle_list.draw(pixelated=True)
+            self.scene.draw(pixelated=True)
 
-        self.gui_camera.use()
-        arcade.draw_text(
-            f"Score: {int(self.score)}",
-            1300, 465,
-            arcade.csscolor.BLACK,
-            24,
-            font_name="Consolas"
-        )
+            self.gui_camera.use()
+            arcade.draw_text(
+                f"Score: {int(self.score)}",
+                1300, 465,
+                arcade.csscolor.BLACK,
+                24,
+                font_name="Consolas"
+            )
 
-        # Schwierigkeitsgrad anzeigen
-        arcade.draw_text(
-            f"Level: {self.difficulty_level}",
-            10, 465,
-            arcade.csscolor.RED,
-            24,
-            font_name="Consolas"
-        )
+            # Schwierigkeitsgrad anzeigen
+            arcade.draw_text(
+                f"Level: {self.difficulty_level}",
+                10, 465,
+                arcade.csscolor.RED,
+                24,
+                font_name="Consolas"
+            )
 
     def on_key_press(self, key, modifiers):
-        if key == arcade.key.UP or key == arcade.key.SPACE:
-            if self.physics_engine.can_jump():
-                self.player_sprite.change_y = 20 + 2 * self.difficulty_level  # Höhere Sprünge
-                self.player_sprite.is_jumping = True
+        if self.state == GAME_STATE_RUNNING:
+            if key == arcade.key.UP or key == arcade.key.SPACE:
+                if self.physics_engine.can_jump():
+                    self.player_sprite.change_y = 20 + 2 * self.difficulty_level  # Höhere Sprünge
+                    self.player_sprite.is_jumping = True
+        elif self.state == GAME_STATE_MENU:
+            if key == arcade.key.T:
+                self.background_choice = "Sprites/Hintergrund Tag.png"
+            elif key == arcade.key.N:
+                self.background_choice = "Sprites/Hintergrund Nacht.png"
+            elif key == arcade.key.ENTER:
+                self.state = GAME_STATE_RUNNING
+                self.setup()
 
     def on_update(self, delta_time):
+        if self.player_sprite is None:
+            return
         # Schwierigkeit updaten
         self.update_difficulty()
 
@@ -245,12 +284,16 @@ class MyGame(arcade.Window):
             if obstacle.right < 0:
                 obstacle.remove_from_sprite_lists()
 
+        if self.player_sprite is not None and arcade.check_for_collision_with_list(self.player_sprite,self.obstacle_list):
+            arcade.exit()
+
         # Kollisionsabfrage
         if arcade.check_for_collision_with_list(self.player_sprite, self.obstacle_list):
             arcade.exit()
 
         # Physik und Animation
-        self.physics_engine.update()
+        if self.physics_engine:
+             self.physics_engine.update()
         self.player_sprite.is_jumping = not self.physics_engine.can_jump()
         self.player_sprite.update_animation(delta_time)
         self.score += delta_time * 10 * speed_factor  # Schnellerer Score-Anstieg
