@@ -33,13 +33,14 @@ class Player(arcade.Sprite):
         self.cur_texture = 0
         self.scale = CHARACTER_SCALING
         self.is_jumping = False
+        self.animation_speed = UPDATES_PER_FRAME  # Hinzugefügt
 
     def update_animation(self, delta_time: float = 1/60):
         if not self.is_jumping:
             self.cur_texture += 1
-            if self.cur_texture // UPDATES_PER_FRAME >= len(self.run_textures):
+            if self.cur_texture // self.animation_speed >= len(self.run_textures): #Geändert
                 self.cur_texture = 0
-            self.texture = self.run_textures[self.cur_texture // UPDATES_PER_FRAME]
+            self.texture = self.run_textures[self.cur_texture // self.animation_speed] #Geändert
 
 class Obstacle(arcade.Sprite):
     def __init__(self, texture_path):
@@ -50,7 +51,7 @@ class Obstacle(arcade.Sprite):
 
     def update(self, game_speed):
         if self.obstacle_type == "bird":
-            self.center_x -= game_speed * (game_speed * 0.05) * 1.2 # Vögel sind schneller
+            self.center_x -= game_speed  * 1.3  + (game_speed * 0.05)# Vögel sind schneller
         else:
             self.center_x -= game_speed
 
@@ -76,6 +77,15 @@ class MyGame(arcade.Window):
         self.midground_sprite = []
         self.ground_list = None
         self.ground_sprite = []
+
+        # Hintergrundbilder
+        self.background_image1 = "Sprites/Hintergrund.png"
+        self.background_image2 = "Sprites/Hintergrund Nacht.png"  # Füge dein zweites Hintergrundbild hinzu
+        self.midground_image1 = "Sprites/Mittelgrund.png"
+        self.midground_image2 = "Sprites/Mittelgrund Nacht.png"  # Füge dein zweites Mittelgrundbild hinzu
+
+        self.current_background = self.background_image1
+        self.current_midground = self.midground_image1
 
     def setup(self):
         self.gui_camera = arcade.camera.Camera2D()
@@ -107,19 +117,7 @@ class MyGame(arcade.Window):
         self.background_list = arcade.SpriteList()
         self.midground_list = arcade.SpriteList()
 
-        # Hintergrundebenen
-        for i in range(2):
-            bg = arcade.Sprite("Sprites/Hintergrund Nacht.png", BACKGROUND_SCALING)
-            bg.center_x = bg.width * i
-            bg.center_y = SCREEN_HEIGHT // 2
-            self.background_sprite.append(bg)
-            self.background_list.append(bg)
-
-            mg = arcade.Sprite("Sprites/Mittelgrund Nacht.png", BACKGROUND_SCALING)
-            mg.center_x = mg.width * i
-            mg.center_y = 144
-            self.midground_sprite.append(mg)
-            self.midground_list.append(mg)
+        self.load_background()
 
         # Physik-Engine
         self.physics_engine = arcade.PhysicsEnginePlatformer(
@@ -127,6 +125,26 @@ class MyGame(arcade.Window):
             gravity_constant=1,
             walls=self.ground_list
         )
+
+    def load_background(self):
+         # Hintergrundebenen
+        self.background_list = arcade.SpriteList()
+        self.background_sprite = []
+        self.midground_list = arcade.SpriteList()
+        self.midground_sprite = []
+
+        for i in range(2):
+            bg = arcade.Sprite(self.current_background, BACKGROUND_SCALING)
+            bg.center_x = bg.width * i
+            bg.center_y = SCREEN_HEIGHT // 2
+            self.background_sprite.append(bg)
+            self.background_list.append(bg)
+
+            mg = arcade.Sprite(self.current_midground, BACKGROUND_SCALING)
+            mg.center_x = mg.width * i
+            mg.center_y = 144
+            self.midground_sprite.append(mg)
+            self.midground_list.append(mg)
 
     def spawn_obstacle(self):
         """Erstellt ein neues Hindernis mit Schwierigkeitsanpassung"""
@@ -175,6 +193,10 @@ class MyGame(arcade.Window):
         # Sprungphysik anpassen
         self.physics_engine.gravity_constant = 1 + 0.1 * self.difficulty_level
 
+        #Anpassung Animationsgeschwindigkeit
+        self.player_sprite.animation_speed = max(1, UPDATES_PER_FRAME - self.difficulty_level//2)
+
+
     def on_draw(self):
         self.clear()
         self.background_list.draw()
@@ -206,6 +228,17 @@ class MyGame(arcade.Window):
             if self.physics_engine.can_jump():
                 self.player_sprite.change_y = 20 + 2 * self.difficulty_level  # Höhere Sprünge
                 self.player_sprite.is_jumping = True
+        elif key == arcade.key.C:
+            #Wechsle Hintergrund
+            if self.current_background == self.background_image1:
+                self.current_background = self.background_image2
+                self.current_midground = self.midground_image2
+            else:
+                self.current_background = self.background_image1
+                self.current_midground = self.midground_image1
+
+            self.load_background()
+
 
     def on_update(self, delta_time):
         # Schwierigkeit updaten
