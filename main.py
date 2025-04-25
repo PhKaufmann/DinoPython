@@ -101,13 +101,13 @@ class MyGame(arcade.Window):
 
         # Hintergrundebenen
         for i in range(2):
-            bg = arcade.Sprite("Sprites/Hintergrund.png", BACKGROUND_SCALING)
+            bg = arcade.Sprite("Sprites/Hintergrund Nacht.png", BACKGROUND_SCALING)
             bg.center_x = bg.width * i
             bg.center_y = SCREEN_HEIGHT // 2
             self.background_sprite.append(bg)
             self.background_list.append(bg)
 
-            mg = arcade.Sprite("Sprites/Mittelgrund.png", BACKGROUND_SCALING)
+            mg = arcade.Sprite("Sprites/Mittelgrund Nacht.png", BACKGROUND_SCALING)
             mg.center_x = mg.width * i
             mg.center_y = 144
             self.midground_sprite.append(mg)
