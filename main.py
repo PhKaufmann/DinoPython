@@ -17,10 +17,10 @@ TILE_SCALING = 0.5
 # Konstanten für die Bewegung
 BACKGROUND_SCALING = 1.0
 BASE_SPEED = 10  # Grundgeschwindigkeit
+difficulty_level = 1
 
 # Animationseinstellungen
 UPDATES_PER_FRAME = 8
-
 class Player(arcade.Sprite):
     def __init__(self):
         self.run_textures = []
@@ -58,7 +58,8 @@ class MyGame(arcade.Window):
         self.score = 0
         self.game_speed = BASE_SPEED
         self.spawn_timer = 0
-        self.difficulty_level = 1
+        global difficulty_level
+        difficulty_level = 1
         self.max_difficulty = 20
 
         # Hintergrundvariablen
@@ -73,7 +74,8 @@ class MyGame(arcade.Window):
         self.gui_camera = arcade.camera.Camera2D()
         self.score = 0
         self.game_speed = BASE_SPEED
-        self.difficulty_level = 1
+        global difficulty_level
+        difficulty_level = 1
         self.scene = arcade.Scene()
         self.obstacle_list = arcade.SpriteList()
 
@@ -130,11 +132,11 @@ class MyGame(arcade.Window):
         ]
 
         # Schwierigkeitsabhängige Anpassungen
-        if self.difficulty_level > 3:
+        if difficulty_level > 3:
             obstacle_types.append(("Sprites/Cactus3.png", 70, 0.4))
-        if self.difficulty_level > 5:
+        if difficulty_level > 5:
             obstacle_types[2] = ("Sprites/Bird.png", 170, 0.3)  # Höhere Vögel
-        if self.difficulty_level > 7:
+        if difficulty_level > 7:
             obstacle_types.append(("Sprites/Bird2.png", 300, 0.2))
 
         # Normalisierung der Wahrscheinlichkeiten
@@ -156,16 +158,17 @@ class MyGame(arcade.Window):
 
     def update_difficulty(self):
         """Passt den Schwierigkeitsgrad basierend auf dem Score an"""
-        self.difficulty_level = min(
+        global difficulty_level
+        difficulty_level = min(
             self.max_difficulty,
             1 + int(self.score / 300)  # Alle 1000 Punkte +1 Level
         )
 
         # Geschwindigkeitssteigerung
-        self.game_speed = BASE_SPEED * (1 + 0.2 * self.difficulty_level)
+        self.game_speed = BASE_SPEED * (1 + 0.2 * difficulty_level)
 
         # Sprungphysik anpassen
-        self.physics_engine.gravity_constant = 1 + 0.1 * self.difficulty_level
+        self.physics_engine.gravity_constant = 1 + 0.1 * difficulty_level
 
     def on_draw(self):
         self.clear()
@@ -186,7 +189,7 @@ class MyGame(arcade.Window):
 
         # Schwierigkeitsgrad anzeigen
         arcade.draw_text(
-            f"Level: {self.difficulty_level}",
+            f"Level: {difficulty_level}",
             10, 465,
             arcade.csscolor.RED,
             24,
@@ -196,7 +199,7 @@ class MyGame(arcade.Window):
     def on_key_press(self, key, modifiers):
         if key == arcade.key.UP or key == arcade.key.SPACE:
             if self.physics_engine.can_jump():
-                self.player_sprite.change_y = 20 + 2 * self.difficulty_level  # Höhere Sprünge
+                self.player_sprite.change_y = 20 + 2 * difficulty_level  # Höhere Sprünge
                 self.player_sprite.is_jumping = True
 
     def on_update(self, delta_time):
@@ -205,7 +208,7 @@ class MyGame(arcade.Window):
 
         # Hindernis-Spawn-System
         self.spawn_timer += delta_time
-        spawn_interval = max(0.5, 3 - 0.2 * self.difficulty_level)  # Schnelleres Spawning
+        spawn_interval = max(0.5, 3 - 0.2 * difficulty_level)  # Schnelleres Spawning
         if self.spawn_timer > random.uniform(spawn_interval*0.5, spawn_interval*1.5):
             self.spawn_obstacle()
             self.spawn_timer = 0
